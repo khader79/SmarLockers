@@ -58,6 +58,20 @@ let client = null;
 let selectedLocker = 1;
 let pinAuthenticated = false;
 let lastPinAttempt = null;
+let statusPollInterval = null;
+
+function startStatusPoll() {
+  if (statusPollInterval) return;
+  statusPollInterval = setInterval(() => {
+    if (client && client.connected) sendCommand("status");
+  }, 5000); // every 5 seconds
+}
+
+function stopStatusPoll() {
+  if (!statusPollInterval) return;
+  clearInterval(statusPollInterval);
+  statusPollInterval = null;
+}
 
 // Store which lockers have PINs saved
 const lockerPINStatus = {
@@ -240,6 +254,18 @@ function sendAction(action) {
     addFeed("⚠️ تم إغلاق الخزنة - لإعادة فتحها يجب إدخال الرمز مرة أخرى");
     updateActionButtons();
   }
+
+  if (action === "release") {
+    // Clear saved PIN for this locker locally and update UI
+    lockerPINStatus[selectedLocker] = false;
+    localStorage.removeItem(`locker${selectedLocker}_has_pin`);
+    pinAuthenticated = false;
+    pinSetIndicator.className = "pin-set-indicator";
+    pinSetIndicator.textContent = "";
+    addFeed(`✓ تم تحرير الخزنة ${selectedLocker} وحذف الرمز المحفوظ`);
+    // Re-select the same locker to show 'create new PIN' state
+    selectLocker(selectedLocker);
+  }
 }
 
 // ===== MQTT CONNECTION =====
@@ -261,22 +287,30 @@ function connect() {
         return;
       }
       addFeed("✓ جاهز للعمل");
+      // Request current state from ESP so UI syncs immediately
+      sendCommand("status");
+      // Start periodic status polling while connected
+      startStatusPoll();
     });
   });
 
   client.on("reconnect", () => {
     setStatus(false, "إعادة الاتصال");
     addFeed("⏳ إعادة الاتصال...");
+    // stop polling while reconnecting to avoid duplicates
+    stopStatusPoll();
   });
 
   client.on("close", () => {
     setStatus(false, "غير متصل");
     addFeed("⚠️ تم قطع الاتصال");
+    stopStatusPoll();
   });
 
   client.on("error", (error) => {
     setStatus(false, "خطأ");
     addFeed(`❌ خطأ: ${error.message}`);
+    stopStatusPoll();
   });
 
   client.on("message", (topic, payload) => {
