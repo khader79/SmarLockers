@@ -287,10 +287,10 @@ function connect() {
         return;
       }
       addFeed("✓ جاهز للعمل");
-      // Request current state from ESP so UI syncs immediately
-      setTimeout(() => sendCommand("status"), 500);
-      // Start periodic status polling while connected (delay first poll)
-      setTimeout(() => startStatusPoll(), 1000);
+      // Request status IMMEDIATELY to sync UI with ESP state
+      sendCommand("status");
+      // Start periodic status polling
+      startStatusPoll();
     });
   });
 
