@@ -194,11 +194,6 @@ function handlePinInput() {
     pinSetIndicator.className = "pin-set-indicator visible";
     pinSetIndicator.textContent = "✓ تم إنشاء الرمز بنجاح";
     addFeed(`✓ تم حفظ الرمز الجديد للخزنة ${selectedLocker}`);
-    showAlert(
-      "success",
-      "تم بنجاح! ✅",
-      `تم إنشاء رمز جديد للخزنة ${selectedLocker}`,
-    );
   }
 
   updateActionButtons();
@@ -242,11 +237,7 @@ function sendAction(action) {
     pinAuthenticated = false;
     pinSetIndicator.className = "pin-set-indicator";
     pinSetIndicator.textContent = "";
-    showAlert(
-      "warning",
-      "تم إغلاق الخزنة",
-      "لإعادة فتح الخزنة يجب إدخال الرمز مرة أخرى",
-    );
+    addFeed("⚠️ تم إغلاق الخزنة - لإعادة فتحها يجب إدخال الرمز مرة أخرى");
     updateActionButtons();
   }
 }
@@ -316,7 +307,6 @@ function connect() {
         message.toLowerCase().includes("success") ||
         message.toLowerCase().includes("opened")
       ) {
-        showAlert("success", "✅ نجحت العملية", message);
         pinAuthenticated = true;
         pinSetIndicator.className = "pin-set-indicator visible";
         pinSetIndicator.textContent = "✓ تم التحقق من الرمز";
