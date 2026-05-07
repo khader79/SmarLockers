@@ -288,9 +288,9 @@ function connect() {
       }
       addFeed("✓ جاهز للعمل");
       // Request current state from ESP so UI syncs immediately
-      sendCommand("status");
-      // Start periodic status polling while connected
-      startStatusPoll();
+      setTimeout(() => sendCommand("status"), 500);
+      // Start periodic status polling while connected (delay first poll)
+      setTimeout(() => startStatusPoll(), 1000);
     });
   });
 
@@ -353,14 +353,20 @@ function connect() {
 }
 
 function parseLockerState(message) {
+  console.log("Parsing locker state:", message);
   const matches = [...message.matchAll(/L([123]):([^|,]+)\|([^,]+)/g)];
   for (const match of matches) {
     const lockerId = Number(match[1]);
     const state = match[2].trim();
     const position = match[3].trim();
+    console.log(`L${lockerId}: state=${state}, position=${position}`);
 
     const isAvailable = /AVAILABLE/i.test(state);
     const isOpen = /OPEN/i.test(position);
+
+    // Store state in sessionStorage to persist across reloads
+    sessionStorage.setItem(`locker${lockerId}_state`, state);
+    sessionStorage.setItem(`locker${lockerId}_position`, position);
 
     lockerStateBadges[lockerId].textContent = isAvailable ? "متاحة" : "مشغولة";
     lockerStateBadges[lockerId].className =
@@ -369,6 +375,25 @@ function parseLockerState(message) {
     lockerPosBadges[lockerId].textContent = isOpen ? "مفتوحة" : "مغلقة";
     lockerPosBadges[lockerId].className =
       `status-badge ${isOpen ? "open" : "closed"}`;
+  }
+}
+
+// Restore locker states from sessionStorage on page load
+function restoreLockerStatesFromSession() {
+  for (let i = 1; i <= 3; i++) {
+    const state = sessionStorage.getItem(`locker${i}_state`);
+    const position = sessionStorage.getItem(`locker${i}_position`);
+    if (state && position) {
+      const isAvailable = /AVAILABLE/i.test(state);
+      const isOpen = /OPEN/i.test(position);
+      lockerStateBadges[i].textContent = isAvailable ? "متاحة" : "مشغولة";
+      lockerStateBadges[i].className =
+        `status-badge ${isAvailable ? "free" : "occupied"}`;
+      lockerPosBadges[i].textContent = isOpen ? "مفتوحة" : "مغلقة";
+      lockerPosBadges[i].className =
+        `status-badge ${isOpen ? "open" : "closed"}`;
+      console.log(`Restored L${i}: ${state} | ${position}`);
+    }
   }
 }
 
@@ -392,4 +417,5 @@ pinInput.addEventListener("keydown", (e) => {
 // ===== INITIAL STATE =====
 setStatus(false, "غير متصل");
 selectLocker(1);
+restoreLockerStatesFromSession();
 addFeed("مرحبًا بك - اختر خزنة وأدخل رمزك");
